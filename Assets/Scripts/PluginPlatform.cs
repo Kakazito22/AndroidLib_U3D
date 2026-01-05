@@ -76,6 +76,13 @@ public class PluginPlatform : MonoBehaviour
         return Brand.Unknown;
     }
 
+    public void SetPackageInfo(string packageName, string version, int versionCode)
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        androidLibPlugin.CallStatic("SetPackageInfo", packageName, version, versionCode);
+#endif
+    }
+
     /// <summary>
     /// 检测应用市场更新
     /// </summary>
@@ -88,10 +95,47 @@ public class PluginPlatform : MonoBehaviour
 #endif
     }
 
-    public void CheckMarketUpdateResult(string response)
+    public void OnCheckUpdateResult(string response)
     {
-        string tips = "YSH PluginPlatform CheckHonorUpdate CheckMarketUpdateResult response = " + response;
-        Debug.LogWarning(tips);
+        string tips = "YSH PluginPlatform OnCheckUpdateResult response = " + response;
+        Debug.Log(tips);
+
+        if (response == "UPDATE")
+        {
+            marketUpdateUI.ShowConfirmDialog("更新提示", "检测到应用有更新，是否前往应用市场进行更新？",
+                "前往更新", "退出应用",
+                () => {
+                    var b = GetDeviceBrand();
+                    Debug.LogWarning("YSH User confirmed to update the app. Brand = "+b);
+                    marketUpdateUI.txtContent.text = "用户选择前往更新应用";
+                    CallAndroidLibStaticMethod("JumpMarketDetail", (int)b);
+                },
+                () => {
+                    Debug.LogWarning("YSH User chose to quit the app instead of updating.");
+                    marketUpdateUI.txtContent.text = "用户选择退出应用";
+                });
+        }
+        else if (response == "NO_UPDATE")
+        {
+            marketUpdateUI.txtContent.text = "沒有检测到更新";
+        }
+        else
+        {
+            marketUpdateUI.txtContent.text = "测更新失败，请检查网络后重试！";
+            marketUpdateUI.ShowConfirmDialog("提示", "检测更新失败，请检查网络后重试！",
+                "重试", "退出应用",
+                () => {
+                    Debug.LogWarning("YSH User chose to retry checking for updates.");
+                    marketUpdateUI.txtContent.text = "用户选择重试检测更新";
+                    CheckMarketUpdate();
+                },
+                () => {
+                    Debug.LogWarning("YSH User chose to quit the app instead of retrying.");
+                    marketUpdateUI.txtContent.text = "用户选择退出应用";
+                });
+        }
+
+        
         marketUpdateUI.txtContent.text = tips;
     }
 
